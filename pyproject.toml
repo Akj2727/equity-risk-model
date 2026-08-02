@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "erm"
+version = "0.1.0"
+description = "Barra-style fundamental and Axioma-style statistical equity risk models, with robust portfolio optimisation"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "scipy>=1.10",
+    "scikit-learn>=1.3",
+    "cvxpy>=1.4",
+    "matplotlib>=3.7",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+real = ["yfinance>=0.2"]
+
+[tool.setuptools.packages.find]
+include = ["erm*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
