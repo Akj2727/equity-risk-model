@@ -36,6 +36,7 @@ class FundamentalConfig:
     n_size_buckets: int = 10
     horizon: int = 21
     min_spec_obs: int = 42
+    use_vra: bool = True
 
 
 def ewma_cov_nw(F: np.ndarray, halflife: float, lags: int) -> np.ndarray:
@@ -177,7 +178,7 @@ class FundamentalRiskModel:
             raise ValueError(f"not enough factor history at {date.date()}")
         S = factor_covariance(fr.to_numpy(), cfg)
         lam_f = self.lambda_f.loc[:date].iloc[-1]
-        lam_f = 1.0 if not np.isfinite(lam_f) else lam_f
+        lam_f = 1.0 if (not cfg.use_vra or not np.isfinite(lam_f)) else lam_f
         S = S * lam_f ** 2 * cfg.horizon
         names = list(fr.columns)
         F = pd.DataFrame(S, index=names, columns=names)
@@ -187,9 +188,10 @@ class FundamentalRiskModel:
         cap = self.mcap.loc[date]
         sig = shrink_specific(sig.reindex(X.index), cap.reindex(X.index), cfg.shrink_q, cfg.n_size_buckets)
         lam_s = self.lambda_s.loc[:date].iloc[-1]
-        lam_s = 1.0 if not np.isfinite(lam_s) else lam_s
+        lam_s = 1.0 if (not cfg.use_vra or not np.isfinite(lam_s)) else lam_s
         D = (sig * lam_s) ** 2 * cfg.horizon
-        return RiskModel(X=X[names], F=F, D=D, name="fundamental")
+        name = "fundamental" if cfg.use_vra else "fundamental_no_vra"
+        return RiskModel(X=X[names], F=F, D=D, name=name)
 
     def exposures_at(self, date) -> pd.DataFrame:
         i = self._exp_dates.searchsorted(pd.Timestamp(date), side="right") - 1
