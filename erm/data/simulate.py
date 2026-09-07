@@ -76,11 +76,13 @@ def simulate_universe(cfg: SimConfig | None = None) -> tuple[Universe, SimTruth]
     cfg = cfg or SimConfig()
     rng = np.random.default_rng(cfg.seed)
     N, K_ind = cfg.n_assets, cfg.n_industries
-    n_months = cfg.n_years * 12
-    T = n_months * DAYS_PER_MONTH
-    dates = pd.bdate_range("2017-01-02", periods=T)
+    start = pd.Timestamp("2017-01-02")
+    dates = pd.bdate_range(start, start + pd.DateOffset(years=cfg.n_years) - pd.Timedelta(days=1))
+    T = len(dates)
     tickers = pd.Index([f"S{i:03d}" for i in range(N)])
-    month_of_day = np.repeat(np.arange(n_months), DAYS_PER_MONTH)
+    month_key = dates.year * 12 + dates.month
+    month_of_day = month_key - month_key[0]
+    n_months = int(month_of_day[-1]) + 1
 
     industry = pd.Series(rng.integers(0, K_ind, N), index=tickers).map(lambda k: f"IND{k:02d}")
     ind_codes = pd.Categorical(industry).codes
@@ -162,7 +164,8 @@ def simulate_universe(cfg: SimConfig | None = None) -> tuple[Universe, SimTruth]
         "sales_growth": daily(0.08 + 0.12 * growth),
     }
 
-    month_ends = pd.DatetimeIndex([dates[(m + 1) * DAYS_PER_MONTH - 1] for m in range(n_months)])
+    last_pos = np.r_[np.flatnonzero(np.diff(month_of_day)), T - 1]
+    month_ends = dates[last_pos]
     # signal for month m is published at the end of month m-1
     sig_df = pd.DataFrame(signal[1:], index=month_ends[:-1], columns=tickers)
     alpha_df = pd.DataFrame(alpha_ann[1:] / DAYS_PER_YEAR, index=month_ends[:-1], columns=tickers)
