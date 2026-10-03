@@ -33,8 +33,8 @@ def forward_returns(uni: Universe, date, horizon: int = 21) -> pd.Series:
     return (1 + R.fillna(0.0)).prod() - 1
 
 
-def test_portfolios(uni: Universe, date, seed: int, n_long=20, n_ls=20, n_active=10,
-                    bench_top=100) -> pd.DataFrame:
+def make_test_portfolios(uni: Universe, date, seed: int, n_long=20, n_ls=20, n_active=10,
+                         bench_top=100) -> pd.DataFrame:
     rng = np.random.default_rng(seed)
     tickers = uni.tickers
     N = len(tickers)
@@ -70,7 +70,7 @@ def evaluate_models(pipe, dates, models, horizon: int = 21, seed: int = 0) -> di
         fwd = forward_returns(uni, d, horizon)
         if fwd is None:
             continue
-        P = test_portfolios(uni, d, seed + i)
+        P = make_test_portfolios(uni, d, seed + i)
         realised = P.T @ fwd
         for m in models:
             rm = pipe.model(m, d)
