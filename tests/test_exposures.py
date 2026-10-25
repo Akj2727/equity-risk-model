@@ -43,3 +43,16 @@ def test_exposures_are_point_in_time(sim):
     mcap.iloc[pos + 1:] *= 3
     shocked = Universe(rets, mcap, uni.turnover, uni.industry, uni.fundamentals)
     pd.testing.assert_frame_equal(base, style_exposures(shocked, d))
+
+
+def test_exposures_with_unlisted_names(sim):
+    # a name that lists later has no cap or returns before its first day
+    uni, _ = sim
+    d = uni.month_ends()[20]
+    pos = uni.dates.get_loc(d)
+    late = uni.tickers[:3]
+    rets, mcap, turn = uni.returns.copy(), uni.mcap.copy(), uni.turnover.copy()
+    for panel in (rets, mcap, turn):
+        panel.iloc[:pos + 1, panel.columns.get_indexer(late)] = np.nan
+    X = style_exposures(Universe(rets, mcap, turn, uni.industry, uni.fundamentals), d)
+    assert X.notna().all().all()

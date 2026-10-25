@@ -123,7 +123,9 @@ def _orthogonalize(y: pd.Series, X: pd.DataFrame, cap: pd.Series) -> pd.Series:
     """Residual of y on X (plus intercept) under sqrt-cap weights."""
     A = np.column_stack([np.ones(len(X)), X.to_numpy()])
     w = np.sqrt(cap.to_numpy())
-    coef, *_ = np.linalg.lstsq(A * w[:, None], y.to_numpy() * w, rcond=None)
+    # names not yet listed have no cap; fit on the rest, residualise everyone
+    ok = np.isfinite(w) & np.isfinite(A).all(axis=1) & np.isfinite(y.to_numpy())
+    coef, *_ = np.linalg.lstsq(A[ok] * w[ok, None], y.to_numpy()[ok] * w[ok], rcond=None)
     return y - A @ coef
 
 
