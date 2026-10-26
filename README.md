@@ -82,11 +82,58 @@ A correct model's bias statistic lands within 1 +/- 0.18 here.
 
 Annualised gross active return split by source, for MVO: 3.15% specific, 0.60% size, 0.16% industry, -0.16% quality, the rest near zero. Most of the return comes from stock selection rather than factor tilts, which is what the style limits are there to enforce. Totals are before trading costs.
 
+## Results (S&P 500, real data)
+
+Full tables and figures are in [`results/sp500/summary.md`](results/sp500/summary.md). Produced by:
+
+```bash
+python -m erm.run --data sp500 --start 2014-01-01 --max-names 300
+```
+
+Daily yfinance prices from January 2014 to October 2026. `--max-names 300` takes the first 300 names of the current S&P 500 list, which is ordered by company name (3M through Marsh), not by size. 277 of them have at least 80% price history, leaving 117 out-of-sample months. Industries are the 11 GICS sectors. No fundamentals file was given, so the model has five style factors (beta, momentum, size, residual volatility, liquidity) with no value, quality or growth. Alpha is the placeholder price composite. Benchmark, rebalancing and costs are the same as in the simulated run.
+
+**Caveats.** The universe is *today's* constituents, so the history carries survivorship bias: names that left the index since 2014 are missing, and names that joined late are included for the whole period. Market caps are today's shares outstanding times historical prices, so caps, and with them the benchmark weights and size exposures, are approximate further back in time.
+
+### Optimiser backtest
+
+| strategy | active return | realised TE | predicted TE | realised / predicted | IR | turnover | names |
+|---|---|---|---|---|---|---|---|
+| MVO | 0.13% | 4.30% | 2.55% | 1.687 | 0.030 | 18.94% | 73.6 |
+| MVO-Hybrid | -0.04% | 4.30% | 2.52% | 1.704 | -0.009 | 18.89% | 71.4 |
+| MVO+AAF | 0.07% | 4.16% | 2.52% | 1.647 | 0.016 | 15.70% | 80.3 |
+| Robust (kappa=1) | 0.10% | 4.21% | 2.45% | 1.717 | 0.024 | 17.72% | 79.3 |
+| Robust+AAF | 0.06% | 4.09% | 2.44% | 1.677 | 0.014 | 14.82% | 85.4 |
+
+- **Every strategy underpredicts its tracking error by 65 to 72%.** That is much worse than the 3 to 20% misses in simulation. This model doesn't hold the 2.5% TE target out of sample.
+- **The hybrid model doesn't fix it here.** Its TE ratio (1.70) is no better than plain MVO (1.69), and its active return is negative. The AAF and the robust term each cut realised TE and turnover a little, but none of them comes close to closing the gap.
+- **The placeholder signal has essentially no skill.** Information ratios are between -0.01 and 0.03. Net active returns are 0.13% or less a year, after about 0.4% a year of trading costs.
+
+### Risk forecasts
+
+A correct model's bias statistic lands within 1 +/- 0.131 here.
+
+| model | mean bias, all test portfolios | share in 95% band | min-variance predicted vol | min-variance realised vol |
+|---|---|---|---|---|
+| sample | 1.052 | 0.961 | 9.52% | 12.01% |
+| Ledoit-Wolf | 1.065 | 0.745 | 9.31% | 12.04% |
+| statistical | 1.068 | 0.882 | 9.35% | 12.08% |
+| fundamental, no VRA | 1.032 | 1.000 | 11.96% | 12.17% |
+| fundamental | 1.012 | 0.980 | 12.53% | 12.19% |
+| hybrid | 1.010 | 0.980 | 12.54% | 12.33% |
+
+- On random test portfolios the fundamental and hybrid models are closest to unbiased. Ledoit-Wolf has only 74.5% of test portfolios inside the band. The statistical model's mean bias on active portfolios is 1.131, right at the edge of the band.
+- In the **minimum-variance test**, sample, Ledoit-Wolf and statistical promise about 9.3 to 9.5% volatility and deliver about 12%, so they underpredict by roughly a quarter. The factor models forecast within half a point of realised. Unlike in simulation, the volatility regime adjustment helps here: it moves the fundamental model's mean bias from 1.032 to 1.012.
+- The good bias numbers for the factor models don't carry over to the optimised active portfolios above. The optimiser finds the risk the model misses, a gap that random test portfolios don't reveal.
+
+### Attribution
+
+Annualised gross active return split by source, for MVO: 0.39% specific, 0.28% momentum, 0.11% size, 0.10% liquidity, -0.19% industry, -0.08% beta, total 0.58%. Totals are before trading costs, which is why they exceed the net active returns above.
+
 ## Run it
 
 ```bash
 pip install -e ".[test]"
-pytest                          # 23 tests, a few seconds
+pytest                          # 24 tests, a few seconds
 python -m erm.run               # simulated universe, about 2.5 minutes on 2 cores
 ```
 
@@ -127,6 +174,7 @@ erm/
   run.py           end-to-end runner
 tests/
 results/sim/   tables and figures from the default run
+results/sp500/ tables and figures from the S&P 500 run
 ```
 
 ## References
